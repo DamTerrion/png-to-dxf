@@ -112,9 +112,12 @@ def printf (matrix):
     print ''
 
 def make_dxf (matrix, px_size=1, center=(0, 0), layer='RASTER'):
+    if isinstance(matrix, str):
+        if matrix = 'header':
+            return ['  0', 'SECTION',
+                    '  2', 'ENTITIES']
     counter = 0
-    stack = ['  0', 'SECTION',
-             '  2', 'ENTITIES']
+    stack = 
     size = (px_size*len(matrix[0]),
             px_size*len(matrix))
     start = (center[0] - size[0]/2,
@@ -177,24 +180,56 @@ def make_dxf (matrix, px_size=1, center=(0, 0), layer='RASTER'):
                 counter += 1
     stack.extend(['  0', 'ENDSEC',
                   '  0', 'EOF'])
-    return '\n'.join(stack), counter
+    return stack, counter
 
-def split (img, size=100):
-    pix = img.load()
-    num = (img.size[0]%size+1, img.size[1]%size+1)
-    pass
+def split (img, size=(100, 100)):
+    stack = []
+    if isinstance(size, int):
+        size = (size, size)
+    num = (img.size[0]//size[0]+1,
+           img.size[1]//size[1]+1)
+    residue = (img.size[0]%size[0],
+               img.size[1]%size[1])
+    box = size
+    if num == (1, 1):
+        return [(0, 0, img)]
+    for j in range(num[1]):
+        box[0] == size[0]
+        if j == num[1]-1:
+            box[1] = residue[1]
+        for i in range(num[0]):
+            if i == num[0]-1:
+                box[0] = residue[0]
+            stack.append((i, j, img.crop((i*size[0], j*size[1],
+                                          i*size[0]+box[0],
+                                          i*size[1]+box[1]))
+                          ))
+    return stack
 
 def do (filename=None):
     if not filename: filename = input('Filename: ')
     img = Image.open(filename+'.png')
     print ' '.join(('File', filename+'.png', 'loaded with',
                     str(img.size[0])+'x'+str(img.size[1]), 'px.'))
-    prepared, px_counter = mask(img)
-    print px_counter[1], 'from', px_counter[0], 'px founded in image.'
-    print count(prepared), 'px prepared to processing.'
-    result = purge(prepared)
-    print count(result, ('deep', 'mult')), 'elements processed.'
-    dxf_text, lines_counter = make_dxf(result, 0.02, (63.5, 63.5), filename)
+    splitted = split(img)
+    print 'Image was divided for', len(splitted), 'fragments.'
+    full = []
+    for rec in splitted:
+        prepared, px_counter = mask(rec[2])
+        print px_counter[1], 'from', px_counter[0], 'px founded in fragment.'
+        print count(prepared), 'px prepared to processing.'
+        result = purge(prepared)
+        print count(result, ('deep', 'mult')), 'elements processed.'
+        full.append((rec[0], rec[1], result))
+        dxf_fragm, addition = make_dxf(result, 0.02,
+                             (rec[0]*200, rec[1]*200),
+                             filename)
+    dxf_head = make_dxf('header')
+    dxf_body, lines_counter = make_dxf(result, 0.02, (63.5, 63.5), filename)
+    dxf_end = make_dxf('end')
+    dxf_text = '\n'.join(dxf_head +
+                         dxf_body +
+                         dxf_end)
     print lines_counter, 'polylines created.'
     output = open(filename+'.dxf', 'w')
     output.write(dxf_text)
