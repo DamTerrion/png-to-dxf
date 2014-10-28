@@ -4,7 +4,7 @@ from PIL import Image
 from copy import deepcopy
 from time import ctime, time as now
 
-def mask (img, condition=None):
+def maskerize (img, condition=None):
     matrix = []
     pixels = 0
     approved = 0
@@ -29,8 +29,8 @@ def _compare (A, B=(0, 0)):
             return True
         else: return False
 
-def cover (matrix):
-    result = deepcopy(matrix)
+def rectangulize (matrix):
+    result = []
     width = len(matrix[0])
     height = len(matrix)
     for j in range(height):
@@ -45,23 +45,23 @@ def cover (matrix):
                        n < height and
                        matrix[n][m] ):
                     current.append(0)
-                    for l in range(max_len):
+                    for lenght in range(max_len):
                         
                         if (m < width and
                             matrix[n][m] ):
                             current[n-j] += 1
                             m += 1
                         else:
-                            max_len = l
+                            max_len = lenght
                             m = i
                             break
                     else: m = i
                     n += 1
-                for l in range(len(current)):
-                    if _compare((current[l], l+1), rectangle):
-                        rectangle = (current[l], l+1)
-            result[j][i] = rectangle
-    return result
+                for lenght in range(len(current)):
+                    if _compare((current[lenght], lenght+1), rectangle):
+                        rectangle = (current[lenght], lenght+1)
+            result.append((i, j, rectangle))
+    return (width, height, result)
 
 def count (matrix, mode='shallow'):
     summ = 0
@@ -83,40 +83,36 @@ def count (matrix, mode='shallow'):
     return summ
 
 def purge (matrix):
-    old = matrix
     # print count(old), 'elements in progress.'
-    new = deepcopy(matrix)
-    for j in range(len(new)):
-        for i in range(len(new[j])):
-            new[j][i] = (0, 0)
+    new = []
             
-    while count(old):
-        current = cover(old)
+    while count(matrix):
+        width, height, current = rectangulize(matrix)
         rectangle = (0, 0)
         m, n = 0, 0
-        for j in range(len(current)):
-            for i in range(len(current[j])):
-                if _compare(current[j][i], rectangle):
-                    rectangle = current[j][i]
-                    m, n = i, j
-        new[n][m] = rectangle
-        for j in range(rectangle[1]):
-            for i in range(rectangle[0]):
-                old[n+j][m+i] = 0
-    return new
+        for entry in current:
+            if _compare(entry[2], rectangle):
+                rectangle = entry[2]
+                m, n = entry[0], entry[1]
+        new.append((m, n, rectangle))
+        for j in range(entry[2][1]):
+            for i in range(entry[2][0]):
+                matrix[n+j][m+i] = 0
+    return (width, height, new)
 
-def make_dxf (matrix, px_size=1, center=(0, 0), layer='RASTER'):
-    if isinstance(matrix, str):
-        if matrix == 'header':
+def make_dxf (data, px_size=1, center=(0, 0), layer='RASTER'):
+    if isinstance(data, str):
+        if data == 'header':
             return ['  0', 'SECTION',
                     '  2', 'ENTITIES']
-        if matrix == 'end':
+        if data == 'end':
             return ['  0', 'ENDSEC',
                     '  0', 'EOF']
     counter = 0
     stack = []
-    size = (px_size*len(matrix[0]),
-            px_size*len(matrix))
+    width, height, matrix = data
+    size = (px_size * width,
+            px_size * height)
     start = (center[0] - size[0]/2,
              center[1] + size[1]/2)
     stack.extend(['  0', 'POLYLINE',
@@ -147,34 +143,33 @@ def make_dxf (matrix, px_size=1, center=(0, 0), layer='RASTER'):
                   ' 30', '0.0',
                   '  0', 'SEQEND',
                   '  8', str(layer)+'_b'])
-    for j in range(len(matrix)):
-        for i in range(len(matrix[j])):
-            current = matrix[j][i]
-            if current != (0, 0):
-                if current[1]%2:
-                    y_shift = current[1]/2 + 0.5
-                else:
-                    y_shift = current[1]/2
-                stack.extend([
-                    '  0', 'POLYLINE',
-                    '  8', str(layer)+'_t',
-                    ' 66', '      1',
-                    ' 40', str(current[1]*px_size),
-                    ' 41', str(current[1]*px_size),
-                    '  0', 'VERTEX',
-                    '  8', str(layer)+'_t',
-                    ' 10', str(start[0] + px_size*( i           )),
-                    ' 20', str(start[1] - px_size*( j + y_shift )),
-                    ' 30', '0.0',
-                    '  0', 'VERTEX',
-                    '  8', str(layer)+'_t',
-                    ' 10', str(start[0] + px_size*( i+current[0])),
-                    ' 20', str(start[1] - px_size*( j + y_shift )),
-                    ' 30', '0.0',
-                    '  0', 'SEQEND',
-                    '  8', str(layer)+'_t'
-                    ])
-                counter += 1
+    for entry in matrix:
+        i, j, current = entry
+        if current != (0, 0):
+            if current[1]%2:
+                y_shift = current[1]/2 + 0.5
+            else:
+                y_shift = current[1]/2
+            stack.extend([
+                '  0', 'POLYLINE',
+                '  8', str(layer)+'_t',
+                ' 66', '      1',
+                ' 40', str(current[1]*px_size),
+                ' 41', str(current[1]*px_size),
+                '  0', 'VERTEX',
+                '  8', str(layer)+'_t',
+                ' 10', str(start[0] + px_size*( i           )),
+                ' 20', str(start[1] - px_size*( j + y_shift )),
+                ' 30', '0.0',
+                '  0', 'VERTEX',
+                '  8', str(layer)+'_t',
+                ' 10', str(start[0] + px_size*( i+current[0])),
+                ' 20', str(start[1] - px_size*( j + y_shift )),
+                ' 30', '0.0',
+                '  0', 'SEQEND',
+                '  8', str(layer)+'_t'
+                ])
+            counter += 1
     return stack, counter
 
 def split (img, size=(100, 100)):
@@ -254,7 +249,7 @@ def do (filename=None,
         fragm_num = 0
         for fragment in splitted:
             fragm_num += 1
-            prepared, px_counter = mask(fragment[2], px_status)
+            prepared, px_counter = maskerize(fragment[2], px_status)
             if px_counter[1] != 0:
                 print px_counter[1], 'from', px_counter[0], 'px founded in fragment ¹', fragm_num
             result = purge(prepared)
@@ -266,7 +261,7 @@ def do (filename=None,
             dxf_body.extend(dxf_fragm)
             lines_counter += addition
     else:
-        prepared, px_counter = mask(img, px_status)
+        prepared, px_counter = maskerize(img, px_status)
         print px_counter[1], 'from', px_counter[0], 'px founded in image.'
         result = purge(prepared)
         dxf_body, lines_counter = make_dxf(
@@ -300,5 +295,6 @@ def do (filename=None,
     log.close()
 
 if __name__ == '__main__':
-    # do('Craft1', 0, (63.5, 63.5), 0.02, (100, 100))    
+    do('Craft1', 1, (63.5, 63.5), 0.02, None)
+    do('Craft1', 0, (63.5, 63.5), 0.02, None)
     pass
