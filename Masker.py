@@ -14,8 +14,8 @@ def mask (img, condition=None):
         for i in range(img.size[0]):
             pixels += 1
             if (
-                (condition and pix[i,j] == condition) or
-                (not condition and pix[i,j])):
+                (condition != None and pix[i,j] == condition) or
+                (condition == None and pix[i,j])):
                 matrix[j].append(1)
                 approved += 1
             else:
@@ -220,7 +220,7 @@ def split (img, size=(100, 100)):
                           ))
     return stack
 
-def test_img (img_name=False):
+def test (img_name=False):
     if not img_name: img_name = input('Filename: ')
     img = Image.open(img_name+'.png')
     hist = dict()
@@ -266,7 +266,7 @@ def do (filename=None,
             dxf_body.extend(dxf_fragm)
             lines_counter += addition
     else:
-        repared, px_counter = mask(img, px_status)
+        prepared, px_counter = mask(img, px_status)
         print px_counter[1], 'from', px_counter[0], 'px founded in image.'
         result = purge(prepared)
         dxf_body, lines_counter = make_dxf(
@@ -290,15 +290,15 @@ def do (filename=None,
     else: result_time = str(result_time)+' sec.'
     print 'File saved in', result_time
     log = open('masker.log', 'a')
-    log.write(''.join((ctime(end_time), '\t',
-                       filename, '\t',
-                       'in ', result_time, '\n'
-                       ))
+    log.write(''.join((ctime(end_time),
+                       '\t', filename,
+                       '\t', 'with pixels ', str(px_status),
+                       '\t', 'fragms: ', str(fragm_size),
+                       '\t', 'in ', result_time,
+                       '\n'))
               )
     log.close()
 
 if __name__ == '__main__':
-    do('Craft1', None, (63.5, 63.5), 0.02, (100, 100))
-    do('Craft2', None, (63.5, 63.5), 0.02, (100, 100))
-    do('Craft3', None, (63.5, 63.5), 0.02, (100, 100))
+    # do('Craft1', 0, (63.5, 63.5), 0.02, (100, 100))    
     pass
