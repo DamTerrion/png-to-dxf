@@ -18,13 +18,14 @@ def mask (img, condition=None):
     # Переменная pixels сохраняет общее количество обработанных пикселей
     approved = 0
     # Переменная approved сохраняет количество "правильных" пикселей.
-    pix = img.load()
+    pix = img.convert('L').load()
     for j in range(img.size[1]):
         matrix.append([])
         # Для каждой строчки изображения инициализируется пустая строка.
         for i in range(img.size[0]):
             pixels += 1
             # Счётчик общего числа пикселей.
+            '''
             if (
                 (condition != None and pix[i,j] == condition) or
                 (condition == None and pix[i,j])):
@@ -39,6 +40,9 @@ def mask (img, condition=None):
                 matrix[j].append(0)
                 # Если есть условие, которому пиксель не удовлетворяет
                 #  или же пиксель пустой (чёрный, равен "0").
+            '''
+            matrix[j].append(pix[i,j])
+            if pix[i,j]: approved += 1
     return matrix, (pixels, approved)
     # Функция возвращает матрицу маски,
     #  а так же кортеж (всего пикселей, "правильных" пикселей).
@@ -81,8 +85,9 @@ def cover (matrix):
     for j in range(height):
         for i in range(width):
             rectangle = (0, 0)
+            colour = matrix[j][i]
             # Инициализируется прямоугольник нулевой величины.
-            if matrix[j][i]:
+            if colour and matrix[j][i] == colour:
                 # Срабатывает только для ячеек с единицей,
                 #  ячейки с нулём пропускаются.
                 m, n = i, j
@@ -97,7 +102,7 @@ def cover (matrix):
                 
                 while (m < width  and
                        n < height and
-                       matrix[n][m] ):
+                       matrix[n][m] == colour ):
                     # Цикл ограничен размерами маски. Это понадобится,
                     #  если вдоль границы идут только нужные пиксели.
                     current.append(0)
@@ -105,7 +110,7 @@ def cover (matrix):
                     for l in range(max_len):
                         # Цикл ограничен максимальной длиной строки.
                         if (m < width and
-                            matrix[n][m] ):
+                            matrix[n][m] == colour ):
                             # Пока просматриваемая последовательность
                             #  не упрётся в край маски или пустую ячейку
                             current[n-j] += 1
@@ -137,7 +142,7 @@ def cover (matrix):
                         rectangle = (current[l], l+1)
                     # Результатом проверки является максимальная
                     #  из доступных площадей.
-            result[j][i] = rectangle
+            result[j][i] = (rectangle, colour)
             # В ячейку записывается максимальная площадь (минимум 1х1),
             #  а иначе там так и остаётся ноль.
     return result
@@ -148,8 +153,8 @@ def count (matrix, mode='shallow'):
     '''
   Для того, чтобы определить, нужно ли ещё искать максимальные площади
 для каких-либо ячеек маски, необходимо знать, есть ли там ещё что-то.
-Именно эту задачу решает функция count, но её функционал зачем-то шире,
-чем требуется. В частности, она может не только посчитать количество
+Именно эту задачу решает функция count, но её функционал шире, чем
+требуется. В частности, она может не только посчитать количество
 ненулевых элементов, но и их сумму всех их внутренностей, или даже
 сумму произведений всех внутренностей.
     '''
@@ -168,18 +173,23 @@ def count (matrix, mode='shallow'):
                     subsum = 0
                     for sub in item:
                         if isinstance(sub, int): subsum += sub
+                        if isinstance(sub, list): subsum += sub[0]
+                        if isinstance(sub, tuple): subsum += sub[0]
                     summ += subsum
                 if mode == ('deep', 'mult'):
                     # ...добавить к общей сумме факториал ячейки.
                     subsum = 1
                     for sub in item:
                         if isinstance(sub, int): subsum *= sub
+                        if isinstance(sub, list): subsum *= sub[0]
+                        if isinstance(sub, tuple): subsum *= sub[0]
                     summ += abs(subsum)
     '''
-  Честно скажу, я совершенно не помню, зачем это нужно. Но, по крайней
+  Это было сделано просто ради развлечения. Но, по крайней
 мере, оно может позволить отследить, равна ли сумма частных площадей
 сумме всех элементов изначальной маски.
     '''
+    #print(summ)
     return summ
 
 def purge (matrix):
@@ -191,11 +201,12 @@ def purge (matrix):
     '''
     old = matrix
     # print count(old), 'elements in progress.'
-    new = deepcopy(matrix)
-    for j in range(len(new)):
-        for i in range(len(new[j])):
-            new[j][i] = (0, 0)
-    # Казалось бы, зачем копировать матрицу, а затем обнулять её?
+    new = list()
+    for j in range(len(old)):
+        new.append(list())
+        for i in range(len(old[j])):
+            new[j].append((0, 0))
+    # Создаётся нулевая матрица, по размеру аналогичная исходной
             
     while count(old):
         # Цикл работает до тех пор, пока в матрице присутствуют пиксели.
@@ -206,13 +217,13 @@ def purge (matrix):
         m, n = 0, 0
         for j in range(len(current)):
             for i in range(len(current[j])):
-                if _compare(current[j][i], rectangle):
-                    rectangle = current[j][i]
+                if _compare(current[j][i][0], rectangle):
+                    rectangle = current[j][i][0]
                     # Если текущая область больше заданной,
                     #  она заменяет заданную.
                     m, n = i, j
                     # Координаты такой области записываются.
-        new[n][m] = rectangle
+        new[n][m] = (rectangle, current[n][m][1])
         # В новую обнулённую матрицу записывается наибольшая площадь.
         for j in range(rectangle[1]):
             for i in range(rectangle[0]):
@@ -280,30 +291,32 @@ https://github.com/DamTerrion/Lumenous/blob/nDXF/ndxf.py
                   '  8', str(layer)+'_b'])
     for j in range(len(matrix)):
         for i in range(len(matrix[j])):
-            current = matrix[j][i]
-            if current != (0, 0):
+            current = matrix[j][i][0]
+            layer = matrix[j][i][1]
+            if current and current != (0, 0):
                 if current[1]%2:
                     y_shift = current[1]/2 + 0.5
                 else:
                     y_shift = current[1]/2
                 stack.extend([
                     '  0', 'POLYLINE',
-                    '  8', str(layer)+'_t',
+                    '  8', str(layer),
                     ' 66', '      1',
+                    ' 62', '{:>6}'.format(layer),
                     ' 40', str(current[1]*px_size),
                     ' 41', str(current[1]*px_size),
                     '  0', 'VERTEX',
-                    '  8', str(layer)+'_t',
+                    '  8', str(layer),
                     ' 10', str(start[0] + px_size*( i           )),
                     ' 20', str(start[1] - px_size*( j + y_shift )),
                     ' 30', '0.0',
                     '  0', 'VERTEX',
-                    '  8', str(layer)+'_t',
+                    '  8', str(layer),
                     ' 10', str(start[0] + px_size*( i+current[0])),
                     ' 20', str(start[1] - px_size*( j + y_shift )),
                     ' 30', '0.0',
                     '  0', 'SEQEND',
-                    '  8', str(layer)+'_t'
+                    '  8', str(layer)
                     ])
                 counter += 1
     return stack, counter
@@ -393,7 +406,6 @@ def test (img_name=False):
         print item, hist[item]
 
 def do (filename=None,
-        px_status=None,
         img_center=(0, 0),
         px_size=1,
         fragm_size=None
@@ -411,22 +423,24 @@ def do (filename=None,
     dxf_body = []
     # Инициируется тело dxf-файла в виде списка.
     if not filename: filename = input('Filename: ')
-    img = Image.open(filename+'.png')
+    img = Image.open(filename)
     # Если функция запущена без параметров, спрашивается имя файла
     #  для обработки. Затем открывается png-файл с этим именем.
-    print ' '.join(('File', filename+'.png', 'loaded with',
+    print ' '.join(('File', filename, 'loaded with',
                     str(img.size[0])+'x'+str(img.size[1]), 'px.'))
     # Комментарии по ходу работы программы - для отслеживания.
     if fragm_size:
         # Если задан размер фрагментов, изображение делится на куски.
         splitted = split(img, fragm_size)
-        print 'Image was divided for', len(splitted), 'fragments.'
+        if len(splitted) > 1:
+            print 'Image was divided for', len(splitted), 'fragments.'
         fragm_num = 0
         for fragment in splitted:
             fragm_num += 1
-            prepared, px_counter = mask(fragment[2], px_status)
+            prepared, px_counter = mask(fragment[2])
             if px_counter[1] != 0:
                 print px_counter[1], 'from', px_counter[0], 'px founded in fragment №', fragm_num
+            #prepared = fragment[2].load()
             result = purge(prepared)
             dxf_fragm, addition = make_dxf(
                 result, px_size,
@@ -440,7 +454,7 @@ def do (filename=None,
             # Счётчик линий увеличивается на возвращённое ранее число.
     else:
         # Если размер не задан, изображение обрабатывается целиком.
-        prepared, px_counter = mask(img, px_status)
+        prepared, px_counter = mask(img)
         print px_counter[1], 'from', px_counter[0], 'px founded in image.'
         result = purge(prepared)
         dxf_body, lines_counter = make_dxf(
@@ -478,7 +492,7 @@ def do (filename=None,
     # Собирается и вносится в log-файл запись об изображении.
 
 if __name__ == '__main__':
-    # do('Craft1', 0, (63.5, 63.5), 0.02, (100, 100))    
+    do('CPPtest_70mm.bmp', (0, 0), 0.1367, (64, 64))    
     pass
     '''
   Можно вписать сюда любые команды вроде указанной в комментарии,
