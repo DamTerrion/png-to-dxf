@@ -1,6 +1,7 @@
 __pycache__
 bak
 
+*.dwg
 *.dxf
 *.bak
 *.log

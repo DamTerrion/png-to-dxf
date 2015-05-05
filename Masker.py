@@ -483,7 +483,6 @@ def do (filename=None,
     log = open('masker.log', 'a')
     log.write(''.join((ctime(end_time),
                        '\t', filename,
-                       '\t', 'with pixels ', str(px_status),
                        '\t', 'fragms: ', str(fragm_size),
                        '\t', 'in ', result_time,
                        '\n'))
@@ -492,7 +491,8 @@ def do (filename=None,
     # Собирается и вносится в log-файл запись об изображении.
 
 if __name__ == '__main__':
-    do('CPPtest_70mm.bmp', (0, 0), 0.1367, (64, 64))    
+    do('CPPtest_70mm.bmp', (0, 0), 0.1367, (64, 64))
+    #do('Craft1.png', (0, 0), 0.1367, (64, 64))
     pass
     '''
   Можно вписать сюда любые команды вроде указанной в комментарии,
