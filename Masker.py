@@ -1,5 +1,3 @@
-# Python 2x & PIL required
-
 from PIL import Image
 from copy import deepcopy
 # Функция глубокого копирования: копирует и список, и все его элементы;
@@ -294,25 +292,34 @@ https://github.com/DamTerrion/Lumenous/blob/nDXF/ndxf.py
             current = matrix[j][i][0]
             layer = matrix[j][i][1]
             if current and current != (0, 0):
-                x_zero_shift = current[0] * 0
-                x_full_shift = current[0] * 1
-                y_half_shift = current[1] * 0.5
+                if current[0] > current[1]:
+                    x_zero_shift = current[0] * 0
+                    x_full_shift = current[0] * 1
+                    y_zero_shift = current[1] * 0.5
+                    y_full_shift = current[1] * 0.5
+                    line_width = current[1]
+                else:
+                    x_zero_shift = current[0] * 0.5
+                    x_full_shift = current[0] * 0.5
+                    y_zero_shift = current[1] * 0
+                    y_full_shift = current[1] * 1
+                    line_width = current[0]
                 stack.extend([
                     '  0', 'POLYLINE',
                     '  8', str(layer),
                     ' 66', '      1',
                     ' 62', '{:>6}'.format(layer),
-                    ' 40', str(current[1]*px_size),
-                    ' 41', str(current[1]*px_size),
+                    ' 40', str(line_width*px_size),
+                    ' 41', str(line_width*px_size),
                     '  0', 'VERTEX',
                     '  8', str(layer),
-                    ' 10', str(start[0] + px_size*( i                )),
-                    ' 20', str(start[1] - px_size*( j + y_half_shift )),
+                    ' 10', str(start[0] + px_size*( i + x_zero_shift )),
+                    ' 20', str(start[1] - px_size*( j + y_zero_shift )),
                     ' 30', '0.0',
                     '  0', 'VERTEX',
                     '  8', str(layer),
                     ' 10', str(start[0] + px_size*( i + x_full_shift )),
-                    ' 20', str(start[1] - px_size*( j + y_half_shift )),
+                    ' 20', str(start[1] - px_size*( j + y_full_shift )),
                     ' 30', '0.0',
                     '  0', 'SEQEND',
                     '  8', str(layer)
