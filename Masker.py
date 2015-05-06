@@ -66,7 +66,7 @@ def _compare (A, B=(0, 0)):
     #  Из 2х6 (S=12, P=8) и 3х4 (S=12, P=7) будет выбран 3х4.
     #  Из прямоугольников 2х3 и 3х2 будет выбран 2х3. Почему бы и нет?
 
-def cover (matrix):
+def cover (matrix, exclude=(None,)):
     '''
   Данная функция определяет наибольшую область без пропусков,
 начинающуюся с данной точки. Какая из областей является наибольшей,
@@ -85,7 +85,7 @@ def cover (matrix):
             rectangle = (0, 0)
             colour = matrix[j][i]
             # Инициализируется прямоугольник нулевой величины.
-            if colour and matrix[j][i] == colour:
+            if colour not in exclude and matrix[j][i] == colour:
                 # Срабатывает только для ячеек с единицей,
                 #  ячейки с нулём пропускаются.
                 m, n = i, j
@@ -94,7 +94,7 @@ def cover (matrix):
                 # Переменная current сохраняет список доступных
                 #  площадей, описываемых так: номер элемента - высота,
                 #  значение элемента - ширина.
-                max_len = width
+                max_len = width - i
                 # Переменная max_len хранит уменьшающуюся длину,
                 #  чтобы не считывать лишние пиксели. (см. дальше)
                 
@@ -107,8 +107,7 @@ def cover (matrix):
                     # Для новой просматриваемой строки создаётся ячейка.
                     for l in range(max_len):
                         # Цикл ограничен максимальной длиной строки.
-                        if (m < width and
-                            matrix[n][m] == colour ):
+                        if matrix[n][m] == colour: #(m < width and ...)
                             # Пока просматриваемая последовательность
                             #  не упрётся в край маски или пустую ячейку
                             current[n-j] += 1
@@ -147,7 +146,7 @@ def cover (matrix):
     # Функция возвращает матрицу с максимальными доступными площадями,
     #  рассчитанными на каждый пиксель исходной маски.
 
-def count (matrix, mode='shallow'):
+def count (matrix, mode='shallow', exclude=(None, False, 0)):
     '''
   Для того, чтобы определить, нужно ли ещё искать максимальные площади
 для каких-либо ячеек маски, необходимо знать, есть ли там ещё что-то.
@@ -161,7 +160,7 @@ def count (matrix, mode='shallow'):
         # Для каждой строки в маске...
         for item in string:
             # ...для каждой ячейки в строке...
-            if item:
+            if item not in exclude:
                 # ...если эта ячейка не пуста...
                 if mode == 'shallow':
                     # ...просто сосчитать ячейку.
@@ -215,6 +214,11 @@ def purge (matrix):
         m, n = 0, 0
         for j in range(len(current)):
             for i in range(len(current[j])):
+                '''
+                if current[j][i][0] != (0, 0)j > 0:
+                    for a in range(current[j][i][0][1]):
+
+                '''
                 if _compare(current[j][i][0], rectangle):
                     rectangle = current[j][i][0]
                     # Если текущая область больше заданной,
@@ -225,7 +229,7 @@ def purge (matrix):
         # В новую обнулённую матрицу записывается наибольшая площадь.
         for j in range(rectangle[1]):
             for i in range(rectangle[0]):
-                old[n+j][m+i] = 0
+                old[n+j][m+i] = None
         # В пределах записанной площади исходная маска обнуляется.
     return new
     # Возвращается матрица, в которой содержатся только бОльшие площади,
@@ -293,16 +297,16 @@ https://github.com/DamTerrion/Lumenous/blob/nDXF/ndxf.py
             layer = matrix[j][i][1]
             if current and current != (0, 0):
                 if current[0] > current[1]:
-                    x_zero_shift = current[0] * 0
-                    x_full_shift = current[0] * 1
+                    x_zero_shift = 0 # * current[0]
+                    x_full_shift = current[0] # * 1
                     y_zero_shift = current[1] * 0.5
                     y_full_shift = current[1] * 0.5
                     line_width = current[1]
                 else:
                     x_zero_shift = current[0] * 0.5
                     x_full_shift = current[0] * 0.5
-                    y_zero_shift = current[1] * 0
-                    y_full_shift = current[1] * 1
+                    y_zero_shift = 0 # * current[1]
+                    y_full_shift = current[1] # * 1
                     line_width = current[0]
                 stack.extend([
                     '  0', 'POLYLINE',
